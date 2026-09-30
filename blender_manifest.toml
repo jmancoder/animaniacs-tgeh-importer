@@ -1,0 +1,14 @@
+schema_version = "1.0.0"
+
+id = "animaniacs_tgeh_importer"
+version = "0.1.0"
+name = "Animaniacs: The Great Edgar Hunt Importer"
+tagline = "Import models from Animaniacs: The Great Edgar Hunt"
+maintainer = "jmancoder"
+type = "add-on"
+tags = ["Import-Export", "Mesh"]
+blender_version_min = "4.2.0"
+
+license = [
+  "SPDX:GPL-3.0-or-later",
+]
