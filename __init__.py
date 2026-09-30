@@ -9,6 +9,7 @@ bl_info = {
     "category": "Import-Export",
 }
 
+import logging
 from pathlib import Path
 
 import bpy
@@ -17,6 +18,13 @@ from bpy.props import CollectionProperty, StringProperty
 from bpy.types import Context, Operator, OperatorFileListElement
 
 from . import bmsh_reader, importer
+
+# Set up logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+logger.addHandler(handler)
 
 
 class IMPORT_OT_SCENE_bmsh(Operator, ImportHelper):

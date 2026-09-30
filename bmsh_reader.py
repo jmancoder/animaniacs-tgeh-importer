@@ -1,10 +1,13 @@
 from io import BufferedReader
+import logging
 from typing import NamedTuple
 
 import numpy as np
 import numpy.typing as npt
 
 from .binary_reader import BinaryReader
+
+logger = logging.getLogger(__name__)
 
 
 class Mesh(NamedTuple):
@@ -158,27 +161,30 @@ def read_bmsh(f: BufferedReader) -> BMSHData:
     bs.read_uint32()
     bs.read_uint32()
     bs.read_uint32()
-    if header_type == 12:
-        bs.read_uint32()
-        bs.read_uint32()
-        bs.read_uint32()
-        bs.read_uint32()
-        bs.read_uint32()
+    if header_type == 7:
+        pass
+    elif header_type == 12:
+        bs.seek(20, 1)
+    elif header_type == 17:
+        bs.seek(40, 1)
+    else:
+        logger.warning("Unimplemented header type ID %d", header_type)
 
     # Skip texture and material data for now
-    print(hex(bs.tell()))
     bs.seek(material_chunk_size, 1)
-    print()
 
     # Read meshes
     meshes = []
     while bs.tell() < bs.getbuffer().nbytes:
-        print(hex(bs.tell()))
-        sig = bs.read_uint32()
-        if sig == 11:
+        mesh_type = bs.read_uint32()
+        if mesh_type == 11:
+            logger.debug("Reading mesh type 11 at 0x%X", bs.tell())
             meshes.append(_read_mesh_11(bs))
-        elif sig == 18:
+        elif mesh_type == 18:
+            logger.debug("Skipping mesh type 18 at 0x%X", bs.tell())
             _read_mesh_18(bs)
         else:
+            logger.warning("Unimplemented mesh type ID %d", mesh_type)
             break
+    logger.info("Successfully read %d mesh(es)", len(meshes))
     return BMSHData(meshes)
