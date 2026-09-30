@@ -13,8 +13,8 @@ from pathlib import Path
 
 import bpy
 from bpy_extras.io_utils import ImportHelper
-from bpy.props import StringProperty
-from bpy.types import Operator, Context
+from bpy.props import CollectionProperty, StringProperty
+from bpy.types import Context, Operator, OperatorFileListElement
 
 from . import bmsh_reader, importer
 
@@ -32,12 +32,22 @@ class IMPORT_OT_SCENE_bmsh(Operator, ImportHelper):
         maxlen=255,
     )
 
-    def execute(self, context: Context):
-        in_path = Path(self.filepath)
-        with open(in_path, "rb") as f:
-            bmsh_data = bmsh_reader.read_bmsh(f)
+    directory: StringProperty(
+        subtype="DIR_PATH",
+        options={"SKIP_SAVE", "HIDDEN"},
+    )
 
-        importer.import_bmsh(context, bmsh_data)
+    files: CollectionProperty(
+        type=OperatorFileListElement,
+        options={"SKIP_SAVE", "HIDDEN"},
+    )
+
+    def execute(self, context: Context):
+        for in_path_str in self.files:
+            in_path = Path(self.directory) / in_path_str.name
+            with open(in_path, "rb") as f:
+                bmsh_data = bmsh_reader.read_bmsh(f)
+            importer.import_bmsh(context, bmsh_data)
         return {"FINISHED"}
 
 
