@@ -157,16 +157,16 @@ def _read_mesh(bs: BinaryReader) -> Mesh:
 def read_bmsh(f: BufferedReader) -> BMSHData:
     bs = BinaryReader(f.read())
 
-    # Read file header
+    # Read header
     bs.read_uint32()
+    file_type = bs.read_uint32()
     bs.read_uint32()
-    bs.read_uint32()
-    unk_int_count = bs.read_uint32()
-    material_chunk_size = bs.read_uint32()
-    unk_ints = [bs.read_int32() for _ in range(unk_int_count)]
 
-    # Skip texture and material data for now
-    bs.seek(material_chunk_size, 1)
+    # Skip material data for now
+    buffer_count = bs.read_uint32()
+    total_buffer_size = bs.read_uint32()
+    buffer_sizes = [bs.read_int32() for _ in range(buffer_count)]
+    bs.seek(total_buffer_size, 1)
 
     # Read meshes
     meshes = []
