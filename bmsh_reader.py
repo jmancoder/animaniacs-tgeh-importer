@@ -115,27 +115,58 @@ def _read_mesh_buffers_0(bs: BinaryReader, buffer_sizes: list[int]) -> Mesh:
         bs.seek(buffer_size, 1)
     else:
         skin_entries = None
+
+    # Skip over remaining buffers
+    if len(buffer_sizes) > 10:
+        for buffer_size in buffer_sizes[10:]:
+            bs.seek(buffer_size, 1)
     return Mesh(triangles, positions, normals, colors, uvs_0, uvs_1, skin_entries)
+
+
+def _read_mesh_buffers_1(bs: BinaryReader, buffer_sizes: list[int]) -> Mesh:
+    # Read header
+    bs.read_uint32()
+    vertex_count = bs.read_uint32()
+    bs.read_uint32()
+    bs.read_float()
+
+    # Read positions
+    buffer_size = buffer_sizes[2]
+    if buffer_size > 0:
+        positions = np.frombuffer(
+            bs.getbuffer(), "<f4", vertex_count * 3, bs.tell()
+        ).reshape(-1, 3)
+        bs.seek(buffer_size, 1)
+    else:
+        positions = None
+
+    # Skip over remaining buffers
+    if len(buffer_sizes) > 10:
+        for buffer_size in buffer_sizes[10:]:
+            bs.seek(buffer_size, 1)
+    return Mesh(None, positions, None, None, None, None, None)
 
 
 def _read_mesh(bs: BinaryReader) -> Mesh:
     logger.debug("Reading mesh at 0x%X", bs.tell())
-    # Read mesh header
+
+    # Read header
     buffer_count = bs.read_uint32()
     total_buffer_size = bs.read_uint32()
     buffer_sizes = [bs.read_uint32() for _ in range(buffer_count)]
     mesh_end = bs.tell() + total_buffer_size
 
-    # Read geometry header
+    # Read buffers
     mesh_type = bs.read_uint32()
     if mesh_type == 0:
         mesh = _read_mesh_buffers_0(bs, buffer_sizes)
-        bs.seek(mesh_end)
-        return mesh
+    elif mesh_type == 1:
+        mesh = _read_mesh_buffers_1(bs, buffer_sizes)
     else:
         logger.warning("Skipped mesh of unimplemented type %d", mesh_type)
-        bs.seek(mesh_end)
-        return Mesh(None, None, None, None, None, None, None)
+        mesh = Mesh(None, None, None, None, None, None, None)
+    bs.seek(mesh_end)
+    return mesh
 
 
 def read_bmsh(f: BufferedReader) -> BMSHData:

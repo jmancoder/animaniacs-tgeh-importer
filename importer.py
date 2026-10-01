@@ -9,9 +9,14 @@ def _import_mesh(context: Context, mesh_data: bmsh_reader.Mesh) -> Object | None
     if mesh_data.positions is None:
         return None
 
+    if mesh_data.triangles is not None:
+        triangles = mesh_data.triangles
+    else:
+        triangles = []
+
     # Import and validate geometry
     mesh = bpy.data.meshes.new("Mesh")
-    mesh.from_pydata(mesh_data.positions, [], mesh_data.triangles)
+    mesh.from_pydata(mesh_data.positions, [], triangles)
     mesh.validate()
     mesh.update()
 
