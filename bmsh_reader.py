@@ -17,7 +17,6 @@ class Mesh(NamedTuple):
     colors: npt.NDArray | None
     uvs_0: npt.NDArray | None
     uvs_1: npt.NDArray | None
-    skin_entries: npt.NDArray | None
 
 
 class BMSHData(NamedTuple):
@@ -29,7 +28,9 @@ def _read_mesh_buffers_0(bs: BinaryReader, buffer_sizes: list[int]) -> Mesh:
     bs.read_uint32()
     bs.read_uint32()
     vertex_count = bs.read_uint32()
-    bs.seek(36, 1)
+    bs.seek(28, 1)
+    skin_related_0 = bs.read_uint32()
+    skin_related_1 = bs.read_uint32()
     tri_idx_count = bs.read_uint32()
     bs.seek(20, 1)
 
@@ -100,27 +101,11 @@ def _read_mesh_buffers_0(bs: BinaryReader, buffer_sizes: list[int]) -> Mesh:
     else:
         uvs_1 = None
 
-    bs.seek(buffer_sizes[7], 1)
-    bs.seek(buffer_sizes[8], 1)
-
-    # Read unknown skin entries
-    buffer_size = buffer_sizes[9]
-    if buffer_size > 0:
-        skin_entries = np.frombuffer(
-            bs.getbuffer(),
-            "<f4",
-            vertex_count * 24,
-            bs.tell(),
-        ).reshape(-1, 24)
-        bs.seek(buffer_size, 1)
-    else:
-        skin_entries = None
-
     # Skip over remaining buffers
-    if len(buffer_sizes) > 10:
-        for buffer_size in buffer_sizes[10:]:
+    if len(buffer_sizes) > 7:
+        for buffer_size in buffer_sizes[7:]:
             bs.seek(buffer_size, 1)
-    return Mesh(triangles, positions, normals, colors, uvs_0, uvs_1, skin_entries)
+    return Mesh(triangles, positions, normals, colors, uvs_0, uvs_1)
 
 
 def _read_mesh_buffers_1(bs: BinaryReader, buffer_sizes: list[int]) -> Mesh:
@@ -144,7 +129,7 @@ def _read_mesh_buffers_1(bs: BinaryReader, buffer_sizes: list[int]) -> Mesh:
     if len(buffer_sizes) > 10:
         for buffer_size in buffer_sizes[10:]:
             bs.seek(buffer_size, 1)
-    return Mesh(None, positions, None, None, None, None, None)
+    return Mesh(None, positions, None, None, None, None)
 
 
 def _read_mesh(bs: BinaryReader) -> Mesh:
@@ -164,7 +149,7 @@ def _read_mesh(bs: BinaryReader) -> Mesh:
         mesh = _read_mesh_buffers_1(bs, buffer_sizes)
     else:
         logger.warning("Skipped mesh of unimplemented type %d", mesh_type)
-        mesh = Mesh(None, None, None, None, None, None, None)
+        mesh = Mesh(None, None, None, None, None, None)
     bs.seek(mesh_end)
     return mesh
 
