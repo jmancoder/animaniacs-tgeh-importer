@@ -17,7 +17,7 @@ class Mesh(NamedTuple):
     uvs_0: npt.NDArray | None
     uvs_1: npt.NDArray | None
     skin_entries: npt.NDArray | None
-    prim_indices: npt.NDArray | None
+    triangles: npt.NDArray | None
 
 
 class BMSHData(NamedTuple):
@@ -28,7 +28,7 @@ def _read_mesh_11(bs: BinaryReader) -> Mesh:
     # Read mesh header
     geom_size = bs.read_uint32()
     geom_header_size = bs.read_uint32()
-    prim_buf_size = bs.read_uint32()
+    tri_buf_size = bs.read_uint32()
     pos_buf_size = bs.read_uint32()
     norm_buf_size = bs.read_uint32()
     color_buf_size = bs.read_uint32()
@@ -45,13 +45,15 @@ def _read_mesh_11(bs: BinaryReader) -> Mesh:
     bs.read_uint32()
     vertex_count = bs.read_uint32()
     bs.seek(36, 1)
-    prim_idx_count = bs.read_uint32()
+    tri_idx_count = bs.read_uint32()
     bs.seek(20, 1)
 
     # Read geometry buffers
-    if prim_buf_size > 0:
-        prim_indices = np.frombuffer(bs.getbuffer(), "<u2", prim_idx_count, bs.tell())
-        bs.seek(prim_buf_size, 1)
+    if tri_buf_size > 0:
+        prim_indices = np.frombuffer(
+            bs.getbuffer(), "<u2", tri_idx_count, bs.tell()
+        ).reshape(-1, 3)
+        bs.seek(tri_buf_size, 1)
     else:
         prim_indices = None
 

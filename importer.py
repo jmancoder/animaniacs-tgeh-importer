@@ -9,19 +9,9 @@ def _import_mesh(context: Context, mesh_data: bmsh_reader.Mesh) -> Object | None
     if mesh_data.positions is None:
         return None
 
-    # Convert primitives to triangles
-    triangles: list[tuple[int, int, int]] = []
-    if mesh_data.prim_indices is not None:
-        for i in range(mesh_data.prim_indices.size - 2):
-            tri = mesh_data.prim_indices[i : i + 3]
-            if i & 1:
-                triangles.append((tri[0], tri[1], tri[2]))
-            else:
-                triangles.append(tuple(tri.tolist()))
-
     # Import and validate geometry
     mesh = bpy.data.meshes.new("Mesh")
-    mesh.from_pydata(mesh_data.positions, [], triangles)
+    mesh.from_pydata(mesh_data.positions, [], mesh_data.triangles)
     mesh.validate()
     mesh.update()
 
