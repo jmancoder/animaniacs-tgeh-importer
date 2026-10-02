@@ -14,10 +14,10 @@ from pathlib import Path
 
 import bpy
 from bpy_extras.io_utils import ImportHelper
-from bpy.props import CollectionProperty, StringProperty
-from bpy.types import Context, Operator, OperatorFileListElement
+from bpy.props import CollectionProperty, FloatProperty, StringProperty
+from bpy.types import Context, Object, Operator, OperatorFileListElement
 
-from . import bmsh_reader, importer
+from . import bmsh_reader, bskl_reader, reader, importer
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -27,15 +27,15 @@ handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
 logger.addHandler(handler)
 
 
-class IMPORT_OT_SCENE_bmsh(Operator, ImportHelper):
-    """Load a BMSH file."""
+class IMPORT_OT_SCENE_bmsh_bskl(Operator, ImportHelper):
+    """Load a BMSH and/or BSKL file."""
 
-    bl_idname = "import_scene.animaniacs_bmsh"
-    bl_label = "Import BMSH"
-    filename_ext = ".bmsh"
+    bl_idname = "import_scene.bmsh_bskl"
+    bl_label = "Import BMSH/BSKL"
+    filename_ext = ".bmsh;.bskl"
 
     filter_glob: StringProperty(
-        default="*.bmsh",
+        default="*.bmsh;*.bskl",
         options={"HIDDEN"},
         maxlen=255,
     )
@@ -50,26 +50,53 @@ class IMPORT_OT_SCENE_bmsh(Operator, ImportHelper):
         options={"SKIP_SAVE", "HIDDEN"},
     )
 
+    bone_length: FloatProperty(
+        name="Bone Length",
+        description="The length of each bone. Adjust according to the model size.",
+        default=5.0,
+        subtype="DISTANCE",
+    )
+
     def execute(self, context: Context):
+        # Read files and group them by asset ID
+        asset_map: dict[int, list[bmsh_reader.Model | bskl_reader.Skeleton]] = {}
         for in_path_str in self.files:
-            in_path = Path(self.directory) / in_path_str.name
-            with open(in_path, "rb") as f:
-                bmsh_data = bmsh_reader.read_bmsh(f)
-            importer.import_bmsh(context, bmsh_data)
+            input_path = Path(self.directory) / in_path_str.name
+            asset_id, asset_data = reader.read_file(input_path)
+            if asset_id > -1 and asset_data is not None:
+                if asset_id in asset_map:
+                    asset_map[asset_id].append(asset_data)
+                else:
+                    asset_map[asset_id] = [asset_data]
+
+        for data_list in asset_map.values():
+            armature_obj: Object | None = None
+            for data in data_list:
+                if type(data) is bskl_reader.Skeleton:
+                    # Import only the first skeleton of each asset group
+                    if armature_obj is None:
+                        armature_obj = importer.import_armature(
+                            context, data, self.bone_length
+                        )
+                elif type(data) is bmsh_reader.Model:
+                    importer.import_model(context, data, armature_obj)
+
         return {"FINISHED"}
 
 
 def menu_func_import(self, context):
-    self.layout.operator(IMPORT_OT_SCENE_bmsh.bl_idname, text="Animaniacs BMSH (.bmsh)")
+    self.layout.operator(
+        IMPORT_OT_SCENE_bmsh_bskl.bl_idname, text="Animaniacs BMSH/BSKL (.bmsh/.bskl)"
+    )
 
 
 def register():
-    bpy.utils.register_class(IMPORT_OT_SCENE_bmsh)
+    bpy.utils.register_class(IMPORT_OT_SCENE_bmsh_bskl)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
 
 
 def unregister():
-    bpy.utils.unregister_class(IMPORT_OT_SCENE_bmsh)
+    bpy.utils.unregister_class(IMPORT_OT_SCENE_bmsh_bskl)
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
 
 

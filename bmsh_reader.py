@@ -1,4 +1,3 @@
-from io import BufferedReader
 import logging
 from typing import NamedTuple
 
@@ -19,7 +18,7 @@ class Mesh(NamedTuple):
     uvs_1: npt.NDArray | None
 
 
-class BMSHData(NamedTuple):
+class Model(NamedTuple):
     meshes: list[Mesh]
 
 
@@ -154,15 +153,8 @@ def _read_mesh(bs: BinaryReader) -> Mesh:
     return mesh
 
 
-def read_bmsh(f: BufferedReader) -> BMSHData:
-    bs = BinaryReader(f.read())
-
-    # Read header
-    bs.read_uint32()
-    file_type = bs.read_uint32()
-    bs.read_uint32()
-
-    # Skip material data for now
+def read_bmsh(bs: BinaryReader) -> Model:
+    # Read header and skip material data for now
     buffer_count = bs.read_uint32()
     total_buffer_size = bs.read_uint32()
     buffer_sizes = [bs.read_int32() for _ in range(buffer_count)]
@@ -177,4 +169,4 @@ def read_bmsh(f: BufferedReader) -> BMSHData:
     else:
         logger.debug("Reached end of file")
     logger.info("Read %d mesh(es)", len(meshes))
-    return BMSHData(meshes)
+    return Model(meshes)
