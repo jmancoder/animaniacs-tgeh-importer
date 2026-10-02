@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def read_file(
-    input_path: Path,
+    input_path: Path, read_col_meshes: bool
 ) -> tuple[int, bmsh_reader.Model | bskl_reader.Skeleton | None]:
     with open(input_path, "rb") as f:
         bs = BinaryReader(f.read())
@@ -23,7 +23,7 @@ def read_file(
     bs.read_uint32()
 
     if input_path.suffix == ".bmsh":
-        return asset_id, bmsh_reader.read_bmsh(bs)
+        return asset_id, bmsh_reader.read_bmsh(bs, read_col_meshes)
     elif input_path.suffix == ".bskl":
         return asset_id, bskl_reader.read_bskl(bs)
     else:

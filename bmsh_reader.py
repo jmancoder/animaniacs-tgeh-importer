@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class Mesh(NamedTuple):
+    type_id: int
     triangles: npt.NDArray | None
     positions: npt.NDArray | None
     normals: npt.NDArray | None
@@ -23,7 +24,7 @@ class Model(NamedTuple):
     meshes: list[Mesh]
 
 
-def _read_mesh_buffers_0(bs: BinaryReader, buffer_sizes: list[int]) -> Mesh:
+def _read_mesh_type_0(bs: BinaryReader, buffer_sizes: list[int]) -> Mesh:
     # Read header
     bs.read_uint32()
     bs.read_uint32()
@@ -120,10 +121,10 @@ def _read_mesh_buffers_0(bs: BinaryReader, buffer_sizes: list[int]) -> Mesh:
     if len(buffer_sizes) > 11:
         for buffer_size in buffer_sizes[11:]:
             bs.seek(buffer_size, 1)
-    return Mesh(triangles, positions, normals, colors, uvs_0, uvs_1, weights)
+    return Mesh(0, triangles, positions, normals, colors, uvs_0, uvs_1, weights)
 
 
-def _read_mesh_buffers_1(bs: BinaryReader, buffer_sizes: list[int]) -> Mesh:
+def _read_mesh_type_1(bs: BinaryReader, buffer_sizes: list[int]) -> Mesh:
     # Read header
     bs.read_uint32()
     vertex_count = bs.read_uint32()
@@ -144,7 +145,7 @@ def _read_mesh_buffers_1(bs: BinaryReader, buffer_sizes: list[int]) -> Mesh:
     if len(buffer_sizes) > 10:
         for buffer_size in buffer_sizes[10:]:
             bs.seek(buffer_size, 1)
-    return Mesh(None, positions, None, None, None, None, None)
+    return Mesh(1, None, positions, None, None, None, None, None)
 
 
 def _read_mesh(bs: BinaryReader) -> Mesh:
@@ -155,19 +156,19 @@ def _read_mesh(bs: BinaryReader) -> Mesh:
     mesh_end = bs.tell() + total_buffer_size
 
     # Read buffers
-    mesh_type = bs.read_uint32()
-    if mesh_type == 0:
-        mesh = _read_mesh_buffers_0(bs, buffer_sizes)
-    elif mesh_type == 1:
-        mesh = _read_mesh_buffers_1(bs, buffer_sizes)
+    type_id = bs.read_uint32()
+    if type_id == 0:
+        mesh = _read_mesh_type_0(bs, buffer_sizes)
+    elif type_id == 1:
+        mesh = _read_mesh_type_1(bs, buffer_sizes)
     else:
-        logger.warning("Skipping mesh of unimplemented type %d", mesh_type)
-        mesh = Mesh(None, None, None, None, None, None, None)
+        logger.warning("Skipping mesh of unimplemented type %d", type_id)
+        mesh = Mesh(type_id, None, None, None, None, None, None, None)
     bs.seek(mesh_end)
     return mesh
 
 
-def read_bmsh(bs: BinaryReader) -> Model:
+def read_bmsh(bs: BinaryReader, read_col_meshes: bool) -> Model:
     # Read header and skip material data for now
     buffer_count = bs.read_uint32()
     total_buffer_size = bs.read_uint32()
@@ -178,6 +179,8 @@ def read_bmsh(bs: BinaryReader) -> Model:
     meshes = []
     while bs.tell() < bs.getbuffer().nbytes:
         mesh = _read_mesh(bs)
+        if not read_col_meshes and mesh.type_id == 1:
+            continue
         if mesh is not None:
             meshes.append(mesh)
     return Model(meshes)

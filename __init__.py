@@ -14,7 +14,7 @@ from pathlib import Path
 
 import bpy
 from bpy_extras.io_utils import ImportHelper
-from bpy.props import CollectionProperty, FloatProperty, StringProperty
+from bpy.props import BoolProperty, CollectionProperty, FloatProperty, StringProperty
 from bpy.types import Context, Operator, OperatorFileListElement
 
 from . import bmsh_reader, bskl_reader, reader, importer
@@ -57,12 +57,18 @@ class IMPORT_OT_SCENE_bmsh_bskl(Operator, ImportHelper):
         subtype="DISTANCE",
     )
 
+    read_col_meshes: BoolProperty(
+        name="Read Collision Meshes",
+        description="Read and import collision meshes, which contain no faces.",
+        default=False,
+    )
+
     def execute(self, context: Context):
         # Read files and group them by asset ID
         asset_map = {}
         for in_path_str in self.files:
             input_path = Path(self.directory) / in_path_str.name
-            asset_id, asset_data = reader.read_file(input_path)
+            asset_id, asset_data = reader.read_file(input_path, self.read_col_meshes)
             if asset_id > -1 and asset_data is not None:
                 if asset_id in asset_map:
                     asset_map[asset_id].append(asset_data)
