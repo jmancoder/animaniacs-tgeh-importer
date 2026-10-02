@@ -15,7 +15,7 @@ from pathlib import Path
 import bpy
 from bpy_extras.io_utils import ImportHelper
 from bpy.props import CollectionProperty, FloatProperty, StringProperty
-from bpy.types import Context, Object, Operator, OperatorFileListElement
+from bpy.types import Context, Operator, OperatorFileListElement
 
 from . import bmsh_reader, bskl_reader, reader, importer
 

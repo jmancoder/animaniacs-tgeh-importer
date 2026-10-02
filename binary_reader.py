@@ -1,4 +1,3 @@
-from enum import Enum
 from io import BytesIO, StringIO
 import struct
 from typing import Literal
