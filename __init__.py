@@ -64,33 +64,30 @@ class IMPORT_OT_SCENE_bmsh_bskl(Operator, ImportHelper):
     )
 
     def execute(self, context: Context):
-        # Read files and group them by asset ID
-        asset_map = {}
+        # Read and parse files
+        models = []
+        skeleton = None
         for in_path_str in self.files:
             input_path = Path(self.directory) / in_path_str.name
-            asset_id, asset_data = reader.read_file(input_path, self.read_col_meshes)
-            if asset_id > -1 and asset_data is not None:
-                if asset_id in asset_map:
-                    asset_map[asset_id].append(asset_data)
-                else:
-                    asset_map[asset_id] = [asset_data]
+            file_data = reader.read_file(input_path, self.read_col_meshes)
+            if type(file_data) is bskl_reader.Skeleton:
+                # Only use the first selected skeleton
+                if skeleton is None:
+                    skeleton = file_data
+            elif type(file_data) is bmsh_reader.Model:
+                models.append(file_data)
 
-        for data_list in asset_map.values():
-            # Import first skeleton
+        # Import skeleton
+        if skeleton is not None:
+            armature_obj = importer.import_armature(context, skeleton, self.bone_length)
+            bone_names = [bone.name for bone in skeleton.bones]
+        else:
             armature_obj = None
             bone_names = []
-            for data in data_list:
-                if type(data) is bskl_reader.Skeleton:
-                    armature_obj = importer.import_armature(
-                        context, data, self.bone_length
-                    )
-                    bone_names = [bone.name for bone in data.bones]
-                    break
 
-            # Import models
-            for data in data_list:
-                if type(data) is bmsh_reader.Model:
-                    importer.import_model(context, data, armature_obj, bone_names)
+        # Import models
+        for model_data in models:
+            importer.import_model(context, model_data, armature_obj, bone_names)
         return {"FINISHED"}
 
 
