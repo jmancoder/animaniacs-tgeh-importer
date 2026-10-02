@@ -16,6 +16,7 @@ class Mesh(NamedTuple):
     colors: npt.NDArray | None
     uvs_0: npt.NDArray | None
     uvs_1: npt.NDArray | None
+    weights: npt.NDArray | None
 
 
 class Model(NamedTuple):
@@ -28,8 +29,8 @@ def _read_mesh_buffers_0(bs: BinaryReader, buffer_sizes: list[int]) -> Mesh:
     bs.read_uint32()
     vertex_count = bs.read_uint32()
     bs.seek(28, 1)
-    skin_related_0 = bs.read_uint32()
-    skin_related_1 = bs.read_uint32()
+    bone_count = bs.read_uint32()
+    bs.read_uint32()
     tri_idx_count = bs.read_uint32()
     bs.seek(20, 1)
 
@@ -100,11 +101,26 @@ def _read_mesh_buffers_0(bs: BinaryReader, buffer_sizes: list[int]) -> Mesh:
     else:
         uvs_1 = None
 
+    bs.seek(buffer_sizes[7], 1)
+    bs.seek(buffer_sizes[8], 1)
+
+    # Read skin entries
+    buffer_size = buffer_sizes[9]
+    if buffer_size > 0:
+        weights = np.frombuffer(
+            bs.getbuffer(), "<f4", vertex_count * bone_count, bs.tell()
+        ).reshape(-1, bone_count)
+        bs.seek(buffer_size, 1)
+    else:
+        weights = None
+
+    bs.seek(buffer_sizes[10], 1)
+
     # Skip over remaining buffers
-    if len(buffer_sizes) > 7:
-        for buffer_size in buffer_sizes[7:]:
+    if len(buffer_sizes) > 11:
+        for buffer_size in buffer_sizes[11:]:
             bs.seek(buffer_size, 1)
-    return Mesh(triangles, positions, normals, colors, uvs_0, uvs_1)
+    return Mesh(triangles, positions, normals, colors, uvs_0, uvs_1, weights)
 
 
 def _read_mesh_buffers_1(bs: BinaryReader, buffer_sizes: list[int]) -> Mesh:
@@ -128,12 +144,10 @@ def _read_mesh_buffers_1(bs: BinaryReader, buffer_sizes: list[int]) -> Mesh:
     if len(buffer_sizes) > 10:
         for buffer_size in buffer_sizes[10:]:
             bs.seek(buffer_size, 1)
-    return Mesh(None, positions, None, None, None, None)
+    return Mesh(None, positions, None, None, None, None, None)
 
 
 def _read_mesh(bs: BinaryReader) -> Mesh:
-    logger.debug("Reading mesh at 0x%X", bs.tell())
-
     # Read header
     buffer_count = bs.read_uint32()
     total_buffer_size = bs.read_uint32()
@@ -147,8 +161,8 @@ def _read_mesh(bs: BinaryReader) -> Mesh:
     elif mesh_type == 1:
         mesh = _read_mesh_buffers_1(bs, buffer_sizes)
     else:
-        logger.warning("Skipped mesh of unimplemented type %d", mesh_type)
-        mesh = Mesh(None, None, None, None, None, None)
+        logger.warning("Skipping mesh of unimplemented type %d", mesh_type)
+        mesh = Mesh(None, None, None, None, None, None, None)
     bs.seek(mesh_end)
     return mesh
 
@@ -166,7 +180,4 @@ def read_bmsh(bs: BinaryReader) -> Model:
         mesh = _read_mesh(bs)
         if mesh is not None:
             meshes.append(mesh)
-    else:
-        logger.debug("Reached end of file")
-    logger.info("Read %d mesh(es)", len(meshes))
     return Model(meshes)

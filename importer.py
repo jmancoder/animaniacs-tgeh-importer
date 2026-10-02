@@ -5,7 +5,9 @@ import numpy as np
 from . import bmsh_reader, bskl_reader
 
 
-def import_armature(context: Context, skeleton: bskl_reader.Skeleton, bone_length: float) -> Object:
+def import_armature(
+    context: Context, skeleton: bskl_reader.Skeleton, bone_length: float
+) -> Object:
     armature = bpy.data.armatures.new("Armature")
     armature_obj = bpy.data.objects.new("Armature", armature)
     context.collection.objects.link(armature_obj)
@@ -23,7 +25,9 @@ def import_armature(context: Context, skeleton: bskl_reader.Skeleton, bone_lengt
     return armature_obj
 
 
-def _import_mesh(context: Context, mesh_data: bmsh_reader.Mesh) -> Object | None:
+def _import_mesh(
+    context: Context, mesh_data: bmsh_reader.Mesh, bone_names: list[str]
+) -> Object | None:
     if mesh_data.positions is None:
         return None
 
@@ -66,14 +70,27 @@ def _import_mesh(context: Context, mesh_data: bmsh_reader.Mesh) -> Object | None
     # Create mesh object
     mesh_obj = bpy.data.objects.new("Mesh", mesh)
     context.collection.objects.link(mesh_obj)
+
+    # Create and import vertex groups
+    if mesh_data.weights is not None:
+        vertex_groups = [
+            mesh_obj.vertex_groups.new(name=bone_name) for bone_name in bone_names
+        ]
+        for i, weight_array in enumerate(mesh_data.weights):
+            for vertex_group, weight in zip(vertex_groups, weight_array):
+                if weight > 0.0:
+                    vertex_group.add([i], weight, "ADD")
     return mesh_obj
 
 
 def import_model(
-    context: Context, model_data: bmsh_reader.Model, armature_object: Object | None
+    context: Context,
+    model_data: bmsh_reader.Model,
+    armature_object: Object | None,
+    bone_names: list[str],
 ) -> None:
     for mesh_data in model_data.meshes:
-        mesh_obj = _import_mesh(context, mesh_data)
+        mesh_obj = _import_mesh(context, mesh_data, bone_names)
 
         # Attach to armature if present
         if mesh_obj is None or armature_object is None:

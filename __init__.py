@@ -59,7 +59,7 @@ class IMPORT_OT_SCENE_bmsh_bskl(Operator, ImportHelper):
 
     def execute(self, context: Context):
         # Read files and group them by asset ID
-        asset_map: dict[int, list[bmsh_reader.Model | bskl_reader.Skeleton]] = {}
+        asset_map = {}
         for in_path_str in self.files:
             input_path = Path(self.directory) / in_path_str.name
             asset_id, asset_data = reader.read_file(input_path)
@@ -70,17 +70,21 @@ class IMPORT_OT_SCENE_bmsh_bskl(Operator, ImportHelper):
                     asset_map[asset_id] = [asset_data]
 
         for data_list in asset_map.values():
-            armature_obj: Object | None = None
+            # Import first skeleton
+            armature_obj = None
+            bone_names = []
             for data in data_list:
                 if type(data) is bskl_reader.Skeleton:
-                    # Import only the first skeleton of each asset group
-                    if armature_obj is None:
-                        armature_obj = importer.import_armature(
-                            context, data, self.bone_length
-                        )
-                elif type(data) is bmsh_reader.Model:
-                    importer.import_model(context, data, armature_obj)
+                    armature_obj = importer.import_armature(
+                        context, data, self.bone_length
+                    )
+                    bone_names = [bone.name for bone in data.bones]
+                    break
 
+            # Import models
+            for data in data_list:
+                if type(data) is bmsh_reader.Model:
+                    importer.import_model(context, data, armature_obj, bone_names)
         return {"FINISHED"}
 
 

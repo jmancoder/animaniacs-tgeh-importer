@@ -14,7 +14,7 @@ def read_file(
         bs = BinaryReader(f.read())
 
     if bs.getbuffer().nbytes < 12:
-        logger.error("%s too small to parse", input_path.name)
+        logger.error("File %s too small to parse", input_path.name)
         return -1, None
 
     # Read shared header

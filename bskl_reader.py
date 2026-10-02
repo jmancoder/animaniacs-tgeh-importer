@@ -38,7 +38,6 @@ def read_skeleton_0(bs: BinaryReader, buffer_sizes: list[int]) -> Skeleton:
         matrix_1 = bs.read_matrix_4x4()
         matrix_2 = bs.read_matrix_4x4()
         bones.append(Bone(name, parent_id, matrix_0, matrix_1, matrix_2))
-    logger.info("Read %d bones from skeleton", len(bones))
     return Skeleton(bone_ids, bones)
 
 
