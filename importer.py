@@ -50,6 +50,8 @@ def _import_mesh(
     for uvs in (mesh_data.uvs_0, mesh_data.uvs_1):
         if uvs is None:
             continue
+        # Flip Y axis to account for DirectX-OpenGL conversion
+        uvs[:, 1] = 1.0 - uvs[:, 1]
         uv_layer = mesh.uv_layers.new()
         vertex_idx_array = np.empty(len(mesh.loops), dtype=np.int32)
         mesh.loops.foreach_get("vertex_index", vertex_idx_array)
