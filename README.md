@@ -12,7 +12,7 @@ A Blender add-on for importing models from Animaniacs: The Great Edgar Hunt. Cur
 - BANB - Animation data
 - BMSH - Geometry and material data (supported)
 - BSKL - Bone data (supported)
-- BTGA - Texture data
+- BTGA - Texture data (supported with Noesis plugin in release)
 - BWAV - Sound effects
 - LVL - Level data
 - MDL - Text description of exported Maya scenes
